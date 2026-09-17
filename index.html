@@ -1,218 +1,87 @@
 <!DOCTYPE html>
 <html lang="ckb" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ئافەرین تیڤی - پەخشی ڕاستەوخۆ</title>
-
-    <!-- HLS.js Library بۆ پشتیوانیکردنی لینکی m3u8 -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-    <!-- FontAwesome برای ئایکۆنەکان -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        :root {
-            --primary-color: #ff4757;
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-color: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        /* هەدەر / سەرپەڕە */
-        header {
-            background-color: var(--card-bg);
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 22px;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-        .live-badge {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        /* بەشی ناوەڕۆک */
-        main {
-            flex: 1;
-            max-width: 1000px;
-            width: 90%;
-            margin: 30px auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .player-container {
-            background-color: var(--card-bg);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
-        }
-
-        video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background-color: #000;
-        }
-
-        .channel-info {
-            background-color: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .channel-details h1 {
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-
-        .channel-details p {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .btn-refresh {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.3s;
-        }
-
-        .btn-refresh:hover {
-            opacity: 0.9;
-        }
-
-        /* فوتەر / خوارەوە */
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-muted);
-            font-size: 14px;
-            background-color: var(--card-bg);
-            margin-top: auto;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ڵایڤ چات</title>
+  <style>
+    body { font-family: sans-serif; background-color: #121212; color: #fff; margin: 0; padding: 15px; }
+    .chat-container { max-width: 400px; margin: 0 auto; background: #1e1e1e; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; height: 85vh; }
+    .chat-box { flex: 1; overflow-y: auto; border: 1px solid #333; padding: 10px; border-radius: 8px; margin-bottom: 10px; background: #000; }
+    .msg { margin: 8px 0; padding: 8px 12px; border-radius: 15px; max-width: 75%; word-wrap: break-word; }
+    .my-msg { background: #0084ff; margin-right: auto; text-align: right; }
+    .other-msg { background: #333; margin-left: auto; text-align: right; }
+    .input-box { display: flex; gap: 8px; }
+    input { flex: 1; padding: 10px; border-radius: 20px; border: none; background: #2a2a2a; color: #fff; outline: none; }
+    button { padding: 10px 18px; border-radius: 20px; border: none; background: #FFFC00; color: #000; font-weight: bold; cursor: pointer; }
+  </style>
 </head>
 <body>
 
-    <header>
-        <div class="logo">
-            <i class="fa-solid fa-tv"></i>
-            <span>ئافەرین تیڤی</span>
-        </div>
-        <div class="live-badge">
-            <i class="fa-solid fa-circle"></i> پەخشی ڕاستەوخۆ
-        </div>
-    </header>
+<div class="chat-container">
+  <h3>💬 ڵایڤ چات</h3>
+  <div class="chat-box" id="chatBox"></div>
+  <div class="input-box">
+    <input type="text" id="msgInput" placeholder="پەیامێک بنووسە...">
+    <button onclick="sendMessage()">ناردن</button>
+  </div>
+</div>
 
-    <main>
-        <div class="player-container">
-            <video id="video" controls autoplay muted></video>
-        </div>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-        <div class="channel-info">
-            <div class="channel-details">
-                <h1>کەناڵی ئافەرین (Afarin TV)</h1>
-                <p>سەیری پەخشی ڕاستەوخۆی کەناڵی ئافەرین بکە بە کوالێتی بەرز</p>
-            </div>
-            <button class="btn-refresh" onclick="reloadStream()">
-                <i class="fa-solid fa-rotate-right"></i> دیسان بارکردنەوە
-            </button>
-        </div>
-    </main>
+<script>
+  // 1. زانیارییەکانی Firebase لێرە دابنێ
+  const firebaseConfig = {
+    databaseURL: "https://live-chat-999db-default-rtdb.firebaseio.com"
+  };
 
-    <footer>
-        <p>سەرجەم مافەکانی پارێزراوە &copy; 2026 - ئافەرین تیڤی</p>
-    </footer>
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    <script>
-        const video = document.getElementById('video');
-        const streamUrl = 'http://afarintv2.flashmediacast.com:1935/afarinTV/d1/livestream/chunklist_w1772259073.m3u8';
+  // دروستکردنی IDی تەواو تایبەت بۆ بەکارهێنەر
+  const myUserId = "user_" + Math.random().toString(36).substr(2, 9);
 
-        function loadStream() {
-            if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(streamUrl);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                    video.play();
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // بۆ وێبگەڕەکانی Safari و iOS
-                video.src = streamUrl;
-                video.addEventListener('loadedmetadata', function () {
-                    video.play();
-                });
-            } else {
-                alert('وێبگەڕەکەت پشتیوانی ئەم جۆرە پەخشە ناکات.');
-            }
-        }
+  const chatBox = document.getElementById("chatBox");
+  const msgInput = document.getElementById("msgInput");
 
-        function reloadStream() {
-            loadStream();
-        }
+  // 2. گوێگرتن لە پەیامە نوێیەکان لە کاتی ڕاستەقینەدا
+  db.ref("messages").on("child_added", (snapshot) => {
+    const data = snapshot.val();
+    const msgDiv = document.createElement("div");
+    
+    // جیاکردنەوەی پەیامی خۆت لە کەسانی تر
+    if (data.sender === myUserId) {
+      msgDiv.className = "msg my-msg";
+      msgDiv.textContent = data.text;
+    } else {
+      msgDiv.className = "msg other-msg";
+      msgDiv.textContent = data.text;
+    }
 
-        // دەستپێکردنی پەخش لە کاتی باربوونی پەڕەکەدا
-        window.onload = loadStream;
-    </script>
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight; // خۆکارانە دەچێتە خوارەوەی چاتەکە
+  });
+
+  // 3. ناردنی پەیام بۆ داتابەیس
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (text !== "") {
+      db.ref("messages").push({
+        sender: myUserId,
+        text: text,
+        timestamp: Date.now()
+      });
+      msgInput.value = "";
+    }
+  }
+
+  // ناردنی پەیام بە داگرتنی Enter
+  msgInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
 
 </body>
 </html>
