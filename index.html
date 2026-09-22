@@ -1,1 +1,657 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>یاری دامەی کوردی - Online Firebase</title>
+<!-- Firebase App (Core) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<!-- Firebase Database -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #0f1c15;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 10px;
+  user-select: none;
+}
+.lobby-container {
+  background: #182c1f;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  border: 2px solid #2e4d38;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.lobby-title {
+  font-size: 1.6rem;
+  color: #4cd137;
+  margin-bottom: 10px;
+}
+.input-group {
+  display: flex;
+  gap: 10px;
+}
+.room-input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #4cd137;
+  background: #0f1c15;
+  color: #fff;
+  font-size: 1rem;
+  text-align: center;
+  outline: none;
+}
+.btn {
+  background: linear-gradient(180deg, #27ae60, #1e8449);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-secondary {
+  background: linear-gradient(180deg, #2980b9, #1c5980);
+}
+.btn-ai {
+  background: linear-gradient(180deg, #8e44ad, #6c3483);
+}
+.room-code-display {
+  font-size: 1.1rem;
+  background: #0f1c15;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed #4cd137;
+  color: #f1c40f;
+  word-break: break-all;
+  white-space: pre-line;
+}
+.game-wrapper {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+}
+.header-status {
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+.board-container {
+  padding: 14px;
+  background: #2b180d;
+  border-radius: 12px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 0 10px rgba(0,0,0,0.6);
+  border: 3px solid #4a2810;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 50px);
+  grid-template-rows: repeat(8, 50px);
+  background-color: #d1b187;
+  border: 3px solid #1a0f0a;
+}
+.cell {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+.cell.light { background-color: #e5cdab; }
+.cell.dark { background-color: #cda87c; }
+.cell.selected { background-color: #f1c40f !important; }
+.cell.valid-move::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  background-color: rgba(39, 174, 96, 0.9);
+  border-radius: 50%;
+  position: absolute;
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+.piece {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s ease;
+}
+.piece.white {
+  background: radial-gradient(circle at 35% 35%, #fffdfa, #edd6b1, #c5a068);
+  border: 3px solid #8e6833;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.8);
+}
+.piece.black {
+  background: radial-gradient(circle at 35% 35%, #8c3b28, #591d12, #330c06);
+  border: 3px solid #220603;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.3);
+}
+.piece.king::after {
+  content: '👑';
+  font-size: 20px;
+  position: absolute;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+.controls {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+.btn-small {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  border-radius: 20px;
+}
+@media (max-width: 480px) {
+  .board {
+    grid-template-columns: repeat(8, 42px);
+    grid-template-rows: repeat(8, 42px);
+  }
+  .cell { width: 42px; height: 42px; }
+  .piece { width: 36px; height: 36px; }
+}
+</style>
+</head>
+<body>
 
+<div class="lobby-container" id="lobby">
+  <h2 class="lobby-title">یاری دامەی کوردی Online</h2>
+
+  <button class="btn" onclick="createRoom()">➕ دانانی ڕووم (Create Room)</button>
+
+  <div class="input-group">
+    <input type="text" id="roomCodeInput" class="room-input" placeholder="کۆدی ڕووم بنووسە...">
+    <button class="btn btn-secondary" onclick="joinRoom()">چوونەژوورەوە</button>
+  </div>
+
+  <button class="btn btn-ai" onclick="startAIGame()">🤖 یاری کردن لەگەڵ AI</button>
+
+  <div id="roomStatus" class="room-code-display" style="display: none;"></div>
+</div>
+
+<div class="game-wrapper" id="gameWrapper">
+  <div class="header-status" id="status">چاوەڕێی یاریزان بکە...</div>
+
+  <div class="board-container">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-small" onclick="leaveRoom()">دەرچوون لە یاری</button>
+  </div>
+</div>
+
+<script>
+// ڕێکخستنی فایەربەیس بە زانیارییەکانی خۆت
+const firebaseConfig = {
+  apiKey: "AIzaSyDP8BTmXP5ghvI6S1JMVVuooDTRS-0oMpY",
+  authDomain: "damaikurdi-3a581.firebaseapp.com",
+  databaseURL: "https://damaikurdi-3a581-default-rtdb.firebaseio.com",
+  projectId: "damaikurdi-3a581",
+  storageBucket: "damaikurdi-3a581.firebasestorage.app",
+  messagingSenderId: "407790298879",
+  appId: "1:407790298879:web:093480126c23084e01ceca",
+  measurementId: "G-JEKYYKK2ZM"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const BOARD_SIZE = 8;
+let boardState = [];
+let currentPlayer = 'white';
+let myColor = 'white';
+let selectedCell = null;
+let validMoves = [];
+let gameMode = 'online';
+let currentRoom = null;
+let gameActive = false;
+let roomRef = null;
+
+const boardElement = document.getElementById('board');
+const statusElement = document.getElementById('status');
+const lobbyElement = document.getElementById('lobby');
+const gameWrapperElement = document.getElementById('gameWrapper');
+const roomStatusElement = document.getElementById('roomStatus');
+
+function playWoodSound(isHeavy = false) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(isHeavy ? 350 : 500, ctx.currentTime);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(isHeavy ? 120 : 180, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + (isHeavy ? 0.15 : 0.08));
+    gain.gain.setValueAtTime(isHeavy ? 1.0 : 0.6, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isHeavy ? 0.15 : 0.08));
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (isHeavy ? 0.15 : 0.08));
+  } catch (e) {
+    console.log("Audio exception:", e);
+  }
+}
+
+function createRoom() {
+  const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+  currentRoom = randomCode;
+  myColor = 'white';
+  gameMode = 'online';
+  
+  lobbyElement.style.display = 'none';
+  gameWrapperElement.style.display = 'flex';
+  initBoard();
+  gameActive = false;
+  
+  roomStatusElement.style.display = 'block';
+  statusElement.innerText = `کۆدی ڕووم: ${randomCode}\nچاوەڕێی هاتنە ژوورەوەی یاریزانی دووەم...`;
+
+  roomRef = db.ref('rooms/' + currentRoom);
+  roomRef.set({
+    status: 'waiting',
+    board: boardState,
+    turn: 'white'
+  });
+
+  // گوێگرتن بۆ هاتنی یاریزانی دووەم
+  roomRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    if (data.status === 'playing' && !gameActive) {
+      gameActive = true;
+      updateStatus();
+    }
+
+    if (data.board) {
+      boardState = data.board;
+      currentPlayer = data.turn;
+      renderBoard();
+      updateStatus();
+    }
+  });
+}
+
+function joinRoom() {
+  const code = document.getElementById('roomCodeInput').value.trim();
+  if (!code) {
+    alert("تکایە کۆدی ڕووم بنووسە!");
+    return;
+  }
+  currentRoom = code;
+  myColor = 'black';
+  gameMode = 'online';
+
+  roomRef = db.ref('rooms/' + currentRoom);
+  roomRef.once('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      alert("ئەم ڕوومە بوونی نییە!");
+      return;
+    }
+
+    roomRef.update({ status: 'playing' });
+
+    lobbyElement.style.display = 'none';
+    gameWrapperElement.style.display = 'flex';
+    gameActive = true;
+    boardState = data.board;
+    currentPlayer = data.turn;
+    renderBoard();
+    updateStatus();
+
+    roomRef.on('value', (snapshot) => {
+      const updateData = snapshot.val();
+      if (updateData && updateData.board) {
+        boardState = updateData.board;
+        currentPlayer = updateData.turn;
+        renderBoard();
+        updateStatus();
+      }
+    });
+  });
+}
+
+function startAIGame() {
+  gameMode = 'ai';
+  myColor = 'white';
+  currentPlayer = 'white';
+  gameActive = true;
+  lobbyElement.style.display = 'none';
+  gameWrapperElement.style.display = 'flex';
+  initBoard();
+  updateStatus();
+}
+
+function leaveRoom() {
+  if (roomRef) {
+    roomRef.remove();
+  }
+  location.reload();
+}
+
+function initBoard() {
+  boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+
+  for (let r = 1; r <= 2; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      boardState[r][c] = { player: 'black', isKing: false };
+    }
+  }
+  for (let r = 5; r <= 6; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      boardState[r][c] = { player: 'white', isKing: false };
+    }
+  }
+  renderBoard();
+}
+
+function renderBoard() {
+  boardElement.innerHTML = '';
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+
+      if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+        cell.classList.add('selected');
+      }
+
+      if (validMoves.some(m => m.r === r && m.c === c)) {
+        cell.classList.add('valid-move');
+      }
+
+      const pieceData = boardState[r][c];
+      if (pieceData) {
+        const piece = document.createElement('div');
+        piece.classList.add('piece', pieceData.player);
+        if (pieceData.isKing) piece.classList.add('king');
+        cell.appendChild(piece);
+      }
+
+      cell.addEventListener('click', () => handleCellClick(r, c));
+      boardElement.appendChild(cell);
+    }
+  }
+}
+
+function handleCellClick(r, c) {
+  if (!gameActive) return;
+  if (gameMode === 'online' && currentPlayer !== myColor) return;
+
+  const piece = boardState[r][c];
+  const move = validMoves.find(m => m.r === r && m.c === c);
+
+  if (move) {
+    executeMove(selectedCell, move, true);
+    return;
+  }
+
+  if (piece && piece.player === currentPlayer) {
+    const allMustCaptures = getAllCapturesForPlayer(currentPlayer);
+    if (allMustCaptures.length > 0) {
+      const pieceHasCapture = allMustCaptures.some(cap => cap.from.r === r && cap.from.c === c);
+      if (!pieceHasCapture) {
+        alert("دەبێت بەردی دوژمن بخۆیت! خواردن زۆرەملێیە.");
+        return;
+      }
+    }
+
+    selectedCell = { r, c };
+    validMoves = getValidMovesForPiece(r, c);
+    renderBoard();
+  } else {
+    selectedCell = null;
+    validMoves = [];
+    renderBoard();
+  }
+}
+
+function getValidMovesForPiece(r, c) {
+  const piece = boardState[r][c];
+  if (!piece) return [];
+
+  const captures = getCapturesForPiece(r, c);
+  if (capturingMovesExistForPlayer(currentPlayer)) {
+    return captures.map(cap => cap.to);
+  }
+
+  const moves = [];
+  if (piece.isKing) {
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (let [dr, dc] of directions) {
+      let nr = r + dr;
+      let nc = c + dc;
+      while (isInBounds(nr, nc) && !boardState[nr][nc]) {
+        moves.push({ r: nr, c: nc });
+        nr += dr;
+        nc += dc;
+      }
+    }
+  } else {
+    const forwardDir = piece.player === 'white' ? -1 : 1;
+    const directions = [[forwardDir, 0], [0, -1], [0, 1]];
+    for (let [dr, dc] of directions) {
+      let nr = r + dr;
+      let nc = c + dc;
+      if (isInBounds(nr, nc) && !boardState[nr][nc]) {
+        moves.push({ r: nr, c: nc });
+      }
+    }
+  }
+  return moves;
+}
+
+function getCapturesForPiece(r, c) {
+  const piece = boardState[r][c];
+  if (!piece) return [];
+  const captures = [];
+
+  if (piece.isKing) {
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (let [dr, dc] of directions) {
+      let step = 1;
+      let enemyFound = null;
+
+      while (isInBounds(r + dr * step, c + dc * step)) {
+        let currR = r + dr * step;
+        let currC = c + dc * step;
+        let p = boardState[currR][currC];
+
+        if (p) {
+          if (p.player === piece.player) break;
+          if (enemyFound) break;
+          enemyFound = { r: currR, c: currC };
+        } else if (enemyFound) {
+          captures.push({
+            from: { r, c },
+            to: { r: currR, c: currC },
+            captured: enemyFound
+          });
+        }
+        step++;
+      }
+    }
+  } else {
+    const forwardDir = piece.player === 'white' ? -1 : 1;
+    const directions = [[forwardDir, 0], [0, -1], [0, 1]];
+
+    for (let [dr, dc] of directions) {
+      let enemyR = r + dr;
+      let enemyC = c + dc;
+      let landR = r + dr * 2;
+      let landC = c + dc * 2;
+
+      if (isInBounds(landR, landC) && !boardState[landR][landC]) {
+        let enemyPiece = boardState[enemyR][enemyC];
+        if (enemyPiece && enemyPiece.player !== piece.player) {
+          captures.push({
+            from: { r, c },
+            to: { r: landR, c: landC },
+            captured: { r: enemyR, c: enemyC }
+          });
+        }
+      }
+    }
+  }
+  return captures;
+}
+
+function getAllCapturesForPlayer(player) {
+  let allCaptures = [];
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (boardState[r][c] && boardState[r][c].player === player) {
+        allCaptures = allCaptures.concat(getCapturesForPiece(r, c));
+      }
+    }
+  }
+  return allCaptures;
+}
+
+function capturingMovesExistForPlayer(player) {
+  return getAllCapturesForPlayer(player).length > 0;
+}
+
+function executeMove(from, to, isLocalAction = true) {
+  const piece = boardState[from.r][from.c];
+  const captures = getCapturesForPiece(from.r, from.c);
+  const executedCapture = captures.find(c => c.to.r === to.r && c.to.c === to.c);
+
+  boardState[to.r][to.c] = piece;
+  boardState[from.r][from.c] = null;
+
+  playWoodSound(!!executedCapture);
+
+  if (executedCapture) {
+    boardState[executedCapture.captured.r][executedCapture.captured.c] = null;
+  }
+
+  if ((piece.player === 'white' && to.r === 0) || (piece.player === 'black' && to.r === BOARD_SIZE - 1)) {
+    piece.isKing = true;
+  }
+
+  if (executedCapture) {
+    const nextCaptures = getCapturesForPiece(to.r, to.c);
+    if (nextCaptures.length > 0) {
+      selectedCell = { r: to.r, c: to.c };
+      validMoves = nextCaptures.map(c => c.to);
+      renderBoard();
+      return;
+    }
+  }
+
+  selectedCell = null;
+  validMoves = [];
+  currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+
+  renderBoard();
+  updateStatus();
+  checkWinCondition();
+
+  if (gameMode === 'online' && roomRef) {
+    roomRef.update({
+      board: boardState,
+      turn: currentPlayer
+    });
+  }
+
+  if (gameMode === 'ai' && currentPlayer === 'black') {
+    setTimeout(makeAIMove, 600);
+  }
+}
+
+function makeAIMove() {
+  let captures = getAllCapturesForPlayer('black');
+  if (captures.length > 0) {
+    let cap = captures[Math.floor(Math.random() * captures.length)];
+    executeMove(cap.from, cap.to, true);
+    return;
+  }
+
+  let allMoves = [];
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (boardState[r][c] && boardState[r][c].player === 'black') {
+        let moves = getValidMovesForPiece(r, c);
+        moves.forEach(m => allMoves.push({ from: { r, c }, to: m }));
+      }
+    }
+  }
+
+  if (allMoves.length > 0) {
+    let randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    executeMove(randomMove.from, randomMove.to, true);
+  }
+}
+
+function isInBounds(r, c) {
+  return r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE;
+}
+
+function updateStatus() {
+  if (gameMode === 'online') {
+    statusElement.innerText = (currentPlayer === myColor) ? "نۆرەی تۆیە!" : "نۆرەی ڕکابەرەکەتە...";
+  } else {
+    statusElement.innerText = (currentPlayer === 'white') ? "نۆرەی تۆیە (ڕووناك)" : "نۆرەی AI (تۆخ)";
+  }
+}
+
+function checkWinCondition() {
+  let whitePieces = 0, blackPieces = 0;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (boardState[r][c]) {
+        if (boardState[r][c].player === 'white') whitePieces++;
+        if (boardState[r][c].player === 'black') blackPieces++;
+      }
+    }
+  }
+
+  if (whitePieces === 0) alert("یاریزانی بەردە تۆخەکان سەرکەوت!");
+  else if (blackPieces === 0) alert("پیرۆزە! سەرکەوتنت بەدەستهێنا!");
+}
+</script>
+</body>
+</html>
