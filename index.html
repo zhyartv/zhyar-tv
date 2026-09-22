@@ -3,11 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>یاری دامەی کوردی - Online Firebase</title>
-<!-- Firebase App (Core) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<!-- Firebase Database -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<title>یاری دامەی کوردی - Online MockAPI</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -213,20 +209,7 @@ body {
 </div>
 
 <script>
-// ڕێکخستنی فایەربەیس بە زانیارییەکانی خۆت
-const firebaseConfig = {
-  apiKey: "AIzaSyDP8BTmXP5ghvI6S1JMVVuooDTRS-0oMpY",
-  authDomain: "damaikurdi-3a581.firebaseapp.com",
-  databaseURL: "https://damaikurdi-3a581-default-rtdb.firebaseio.com",
-  projectId: "damaikurdi-3a581",
-  storageBucket: "damaikurdi-3a581.firebasestorage.app",
-  messagingSenderId: "407790298879",
-  appId: "1:407790298879:web:093480126c23084e01ceca",
-  measurementId: "G-JEKYYKK2ZM"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const API_URL = 'https://6ab2aff05b9b60f39d35053c.mockapi.io/rooms';
 
 const BOARD_SIZE = 8;
 let boardState = [];
@@ -236,8 +219,9 @@ let selectedCell = null;
 let validMoves = [];
 let gameMode = 'online';
 let currentRoom = null;
+let roomId = null;
 let gameActive = false;
-let roomRef = null;
+let pollingInterval = null;
 
 const boardElement = document.getElementById('board');
 const statusElement = document.getElementById('status');
@@ -272,7 +256,7 @@ function playWoodSound(isHeavy = false) {
   }
 }
 
-function createRoom() {
+async function createRoom() {
   const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
   currentRoom = randomCode;
   myColor = 'white';
@@ -286,70 +270,93 @@ function createRoom() {
   roomStatusElement.style.display = 'block';
   statusElement.innerText = `کۆدی ڕووم: ${randomCode}\nچاوەڕێی هاتنە ژوورەوەی یاریزانی دووەم...`;
 
-  roomRef = db.ref('rooms/' + currentRoom);
-  roomRef.set({
-    status: 'waiting',
-    board: boardState,
-    turn: 'white'
-  });
-
-  // گوێگرتن بۆ هاتنی یاریزانی دووەم
-  roomRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    if (data.status === 'playing' && !gameActive) {
-      gameActive = true;
-      updateStatus();
-    }
-
-    if (data.board) {
-      boardState = data.board;
-      currentPlayer = data.turn;
-      renderBoard();
-      updateStatus();
-    }
-  });
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: randomCode,
+        status: 'waiting',
+        board: boardState,
+        turn: 'white'
+      })
+    });
+    const data = await response.json();
+    roomId = data.id;
+    startPolling();
+  } catch (e) {
+    console.error("Error creating room:", e);
+  }
 }
 
-function joinRoom() {
+async function joinRoom() {
   const code = document.getElementById('roomCodeInput').value.trim();
   if (!code) {
     alert("تکایە کۆدی ڕووم بنووسە!");
     return;
   }
-  currentRoom = code;
-  myColor = 'black';
-  gameMode = 'online';
+  
+  try {
+    const res = await fetch(API_URL);
+    const rooms = await res.json();
+    const room = rooms.find(r => r.name === code);
 
-  roomRef = db.ref('rooms/' + currentRoom);
-  roomRef.once('value', (snapshot) => {
-    const data = snapshot.val();
-    if (!data) {
+    if (!room) {
       alert("ئەم ڕوومە بوونی نییە!");
       return;
     }
 
-    roomRef.update({ status: 'playing' });
+    currentRoom = code;
+    roomId = room.id;
+    myColor = 'black';
+    gameMode = 'online';
+
+    await fetch(`${API_URL}/${roomId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...room,
+        status: 'playing'
+      })
+    });
 
     lobbyElement.style.display = 'none';
     gameWrapperElement.style.display = 'flex';
     gameActive = true;
-    boardState = data.board;
-    currentPlayer = data.turn;
+    boardState = room.board;
+    currentPlayer = room.turn;
     renderBoard();
     updateStatus();
 
-    roomRef.on('value', (snapshot) => {
-      const updateData = snapshot.val();
-      if (updateData && updateData.board) {
-        boardState = updateData.board;
-        currentPlayer = updateData.turn;
+    startPolling();
+  } catch (e) {
+    console.error("Error joining room:", e);
+  }
+}
+
+function startPolling() {
+  if (pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = setInterval(async () => {
+    if (!roomId) return;
+    try {
+      const res = await fetch(`${API_URL}/${roomId}`);
+      const data = await res.json();
+      
+      if (data.status === 'playing' && !gameActive) {
+        gameActive = true;
+        updateStatus();
+      }
+
+      if (data.board) {
+        boardState = data.board;
+        currentPlayer = data.turn;
         renderBoard();
         updateStatus();
       }
-    });
-  });
+    } catch (e) {
+      console.log("Polling error:", e);
+    }
+  }, 2000);
 }
 
 function startAIGame() {
@@ -363,9 +370,12 @@ function startAIGame() {
   updateStatus();
 }
 
-function leaveRoom() {
-  if (roomRef) {
-    roomRef.remove();
+async function leaveRoom() {
+  if (pollingInterval) clearInterval(pollingInterval);
+  if (roomId && gameMode === 'online') {
+    try {
+      await fetch(`${API_URL}/${roomId}`, { method: 'DELETE' });
+    } catch (e) {}
   }
   location.reload();
 }
@@ -554,7 +564,7 @@ function capturingMovesExistForPlayer(player) {
   return getAllCapturesForPlayer(player).length > 0;
 }
 
-function executeMove(from, to, isLocalAction = true) {
+async function executeMove(from, to, isLocalAction = true) {
   const piece = boardState[from.r][from.c];
   const captures = getCapturesForPiece(from.r, from.c);
   const executedCapture = captures.find(c => c.to.r === to.r && c.to.c === to.c);
@@ -590,11 +600,22 @@ function executeMove(from, to, isLocalAction = true) {
   updateStatus();
   checkWinCondition();
 
-  if (gameMode === 'online' && roomRef) {
-    roomRef.update({
-      board: boardState,
-      turn: currentPlayer
-    });
+  if (gameMode === 'online' && roomId) {
+    try {
+      const res = await fetch(`${API_URL}/${roomId}`);
+      const roomData = await res.json();
+      await fetch(`${API_URL}/${roomId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...roomData,
+          board: boardState,
+          turn: currentPlayer
+        })
+      });
+    } catch (e) {
+      console.error("Error updating move:", e);
+    }
   }
 
   if (gameMode === 'ai' && currentPlayer === 'black') {
