@@ -221,6 +221,7 @@ let currentRoom = null;
 let roomId = null;
 let gameActive = false;
 let pollingInterval = null;
+let isMyMoveProcessing = false;
 
 const boardElement = document.getElementById('board');
 const statusElement = document.getElementById('status');
@@ -336,7 +337,7 @@ async function joinRoom() {
 function startPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
   pollingInterval = setInterval(async () => {
-    if (!roomId) return;
+    if (!roomId || isMyMoveProcessing) return;
     try {
       const res = await fetch(`${API_URL}/${roomId}`);
       const data = await res.json();
@@ -346,7 +347,7 @@ function startPolling() {
         updateStatus();
       }
 
-      if (data.board) {
+      if (data.board && currentPlayer !== myColor) {
         boardState = data.board;
         currentPlayer = data.turn;
         renderBoard();
@@ -355,7 +356,7 @@ function startPolling() {
     } catch (e) {
       console.log("Polling error:", e);
     }
-  }, 100);
+  }, 500);
 }
 
 function startAIGame() {
@@ -600,6 +601,7 @@ async function executeMove(from, to, isLocalAction = true) {
   checkWinCondition();
 
   if (gameMode === 'online' && roomId) {
+    isMyMoveProcessing = true;
     try {
       const res = await fetch(`${API_URL}/${roomId}`);
       const roomData = await res.json();
@@ -614,6 +616,10 @@ async function executeMove(from, to, isLocalAction = true) {
       });
     } catch (e) {
       console.error("Error updating move:", e);
+    } finally {
+      setTimeout(() => {
+        isMyMoveProcessing = false;
+      }, 1000);
     }
   }
 
